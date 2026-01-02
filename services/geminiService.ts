@@ -1,7 +1,10 @@
-import { GoogleGenAI, Type, Schema } from "@google/genai";
+
+import { GoogleGenAI, Type } from "@google/genai";
 import { ScriptAnalysis } from "../types";
 
-const scriptSchema: Schema = {
+// Schema definition using GenAI Type enum.
+// The type is defined as any here to avoid strict schema interface mismatches while ensuring correct property structure.
+const scriptSchema: any = {
   type: Type.OBJECT,
   properties: {
     title: { type: Type.STRING, description: "Tên kịch bản" },
@@ -61,32 +64,18 @@ const scriptSchema: Schema = {
   required: ["title", "genre", "logline_vi", "acts"]
 };
 
-export const validateApiKey = async (apiKey: string): Promise<boolean> => {
-  try {
-    const cleanKey = apiKey.trim();
-    if (!cleanKey || /[^\x20-\x7E]/.test(cleanKey)) {
-        console.error("API Key contains invalid characters");
-        return false;
-    }
+// Removed validateApiKey as it is prohibited to ask users for API keys. 
+// Billing and key selection are handled via window.aistudio.
 
-    const ai = new GoogleGenAI({ apiKey: cleanKey });
-    await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: "Test connection",
-    });
-    return true;
-  } catch (error) {
-    console.error("API Key validation failed:", error);
-    return false;
-  }
-};
-
-export const analyzeScript = async (scriptText: string, apiKey: string): Promise<ScriptAnalysis> => {
+/**
+ * Analyzes script text into a structured shot list using Gemini.
+ */
+export const analyzeScript = async (scriptText: string): Promise<ScriptAnalysis> => {
   try {
-    const cleanKey = apiKey.trim();
-    const ai = new GoogleGenAI({ apiKey: cleanKey });
+    // Create a new instance right before the call as per guidelines.
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3-pro-preview", // Complex reasoning task
       contents: `Phân tích kịch bản sau đây. Hãy chia nhỏ nó thành cấu trúc 3 Hồi (Acts), các Cảnh (Scenes) và từng Cú máy (Shots) để dựng phim.
       
       QUAN TRỌNG VỀ VIDEO PROMPT:
@@ -113,10 +102,10 @@ export const analyzeScript = async (scriptText: string, apiKey: string): Promise
       throw new Error("Không nhận được phản hồi từ AI");
     }
     
-    // Parse JSON
+    // Parse JSON response
     const data = JSON.parse(text) as ScriptAnalysis;
     
-    // Post-process IDs
+    // Assign stable IDs for UI rendering
     data.acts.forEach((act, aIdx) => {
         act.id = `act-${aIdx}`;
         act.scenes.forEach((scene, sIdx) => {
@@ -134,18 +123,20 @@ export const analyzeScript = async (scriptText: string, apiKey: string): Promise
   }
 };
 
+/**
+ * Generates a storyboard sketch based on a shot prompt.
+ */
 export const generateShotImage = async (
     prompt: string, 
-    apiKey: string, 
     characters?: {name: string, description: string}[],
     aspectRatio: string = "16:9",
     resolution: string = "1K"
 ): Promise<string | null> => {
   try {
-    const cleanKey = apiKey.trim();
-    const ai = new GoogleGenAI({ apiKey: cleanKey });
+    // Create a new instance right before the call as per guidelines.
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
-    // --- FORCE SKETCH STYLE PROMPT & SINGLE IMAGE ---
+    // Construct sketch-style prompt
     let finalPrompt = `Create a SINGLE, FULL-FRAME movie storyboard sketch based on the description below.
     
     VISUAL STYLE:
@@ -167,18 +158,19 @@ export const generateShotImage = async (
 
     // Using gemini-3-pro-image-preview for high quality generation
     const response = await ai.models.generateContent({
-      model: "gemini-3-pro-image-preview",
+      model: 'gemini-3-pro-image-preview',
       contents: {
         parts: [{ text: finalPrompt }],
       },
       config: {
         imageConfig: {
-            aspectRatio: aspectRatio,
-            imageSize: resolution
+            aspectRatio: aspectRatio as any,
+            imageSize: resolution as any
         }
       }
     });
 
+    // Extract generated image from parts as per guidelines
     if (response.candidates?.[0]?.content?.parts) {
       for (const part of response.candidates[0].content.parts) {
         if (part.inlineData) {
