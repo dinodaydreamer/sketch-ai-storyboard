@@ -1,65 +1,21 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { analyzeScript, validateApiKey, generateShotImage } from './services/geminiService';
+import { analyzeScript, generateShotImage, validateApiKey } from './services/geminiService';
 import { ScriptAnalysis, TimelineItem, SavedProject, LogEntry, Shot } from './types';
 import { Timeline } from './components/Timeline';
 import { ShotDetails } from './components/ShotDetails';
 import { HelpModal } from './components/HelpModal';
-import { Play, Loader2, FileText, Wand2, LayoutTemplate, Upload, Key, CheckCircle, AlertCircle, HelpCircle, Save, FolderOpen, Download, ImagePlus, StopCircle, FileOutput, Settings, X, GripHorizontal, Images, PlusCircle, TerminalSquare, ShieldAlert, Sun, Moon } from 'lucide-react';
+import { Loader2, Wand2, Upload, Key, CheckCircle, AlertCircle, HelpCircle, Save, FolderOpen, FileOutput, PlusCircle, Images, Sun, Moon, Clapperboard, ShieldAlert } from 'lucide-react';
 
 const SAMPLE_SCRIPT = `CẢNH 1
 EXT. BÃI PHẾ LIỆU CÔNG NGHỆ - NGÀY
 TOÀN CẢNH. Giữa những đống kim loại gỉ sét khổng lồ của thành phố tương lai, một chú robot nhỏ tên BIT (hình dáng tròn trịa, mắt led xanh) đang đào bới. Bầu trời xám xịt, bụi bặm.
 
-CẬN CẢNH. Tay robot chạm vào một vệt xanh lá le lói dưới lớp sắt vụn. Đó là một mầm cây nhỏ đang tỏa sáng.
-
-CẢNH 2
-EXT. BAN CÔNG NHÀ BIT - HOÀNG HÔN
-TRUNG CẢNH. Bit cẩn thận đặt mầm cây vào một chiếc chậu làm từ vỏ lon cũ. Ánh nắng hoàng hôn màu cam cháy nhuộm đỏ những tòa tháp kim loại phía xa.
-
-CẬN CẢNH BIT. Đôi mắt led của chú robot chuyển sang hình trái tim. Chú dùng một ngón tay kim loại chạm nhẹ vào chiếc lá bé xíu.
-
-CẢNH 3
-EXT. BAN CÔNG - ĐÊM
-TOÀN CẢNH. Thành phố lên đèn với những bảng quảng cáo hologram xanh đỏ rực rỡ. Bit ngồi canh gác bên cạnh mầm cây.
-
-CẬN CẢNH MẦM CÂY. Mầm cây bắt đầu phát ra những hạt bụi sáng lung linh, bay lơ lửng xung quanh Bit.
-
-CẢNH 4
-EXT. BAN CÔNG - BÌNH MINH (MƯA)
-TRUNG CẢNH. Một cơn mưa axit xám xịt trút xuống. Bit bung chiếc ô rách nát, che chắn hoàn toàn cho cây nhỏ, mặc cho thân mình bị nước mưa làm hoen gỉ.
-
-ĐẶC TẢ. Những giọt nước mưa chảy trên lớp vỏ kim loại của Bit, nhưng chú robot vẫn đứng im không nhúc nhích.
-
-CẢNH 5
-EXT. BAN CÔNG - NGÀY
-TOÀN CẢNH. Mầm cây bất ngờ lớn nhanh như thổi, vươn cao khỏi ban công. Những tán lá xanh mướt bắt đầu bao phủ lấy mảng tường xám xịt.
-
-CẬN CẢNH. Những đóa hoa màu trắng nhỏ xíu nở rộ, tỏa hương thơm giữa không gian đầy mùi dầu máy.
-
-CẢNH 6
-EXT. THÀNH PHỐ TƯƠNG LAI - CHIỀU
-TOÀN CẢNH TỪ TRÊN CAO. Cây thần của Bit đã cao lớn như một tòa tháp. Những sợi dây leo xanh mướt lan tỏa khắp các đường dây điện, bao phủ lấy những tòa nhà chọc trời.
-
-CẬN CẢNH DÂN CƯ. Những cư dân thành phố (người máy và con người đeo mặt nạ) dừng lại, ngước nhìn lên sự kỳ diệu của thiên nhiên đang trở lại.
-
-CẢNH 7
-EXT. GỐC CÂY THẦN - HOÀNG HÔN
-TRUNG CẢNH. Chim chóc và bướm bắt đầu xuất hiện, bay quanh tán cây. Bit đứng ở gốc cây, trông chú cũ kỹ và gỉ sét hơn nhưng rất hạnh phúc.
-
-CẬN CẢNH. Một đứa bé tiến lại gần, tặng cho Bit một dải ruy băng màu đỏ.
-
-CẢNH 8
-EXT. TRÊN ĐỈNH CÂY THẦN - ĐÊM
-TOÀN CẢNH. Bit ngồi trên một cành cây cao nhất, nhìn xuống thành phố giờ đây đã xanh mướt và rực rỡ sức sống. Bầu trời không còn xám xịt mà đầy sao.
-
-CẬN CẢNH BIT. Chú robot nhắm mắt lại (led tắt dần), một nụ cười yên bình hiện lên trên gương mặt kim loại. Phim khép lại với hình ảnh mầm xanh vươn tới các vì sao.`;
+CẬN CẢNH. Tay robot chạm vào một vệt xanh lá le lói dưới lớp sắt vụn. Đó là một mầm cây nhỏ đang tỏa sáng.`;
 
 const App: React.FC = () => {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [apiKey, setApiKey] = useState('');
-  const [isKeyValid, setIsKeyValid] = useState(false);
-  const [isCheckingKey, setIsCheckingKey] = useState(false);
   const [apiStatus, setApiStatus] = useState<'idle' | 'checking' | 'valid' | 'invalid'>('idle');
   const [scriptInput, setScriptInput] = useState(SAMPLE_SCRIPT);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -69,13 +25,9 @@ const App: React.FC = () => {
   const [view, setView] = useState<'input' | 'timeline'>('input');
   const [previewHeight, setPreviewHeight] = useState(400); 
   const isDraggingRef = useRef(false);
-  const [isBatchGenerating, setIsBatchGenerating] = useState(false);
-  const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
-  const shouldStopBatchRef = useRef(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const logsEndRef = useRef<HTMLDivElement>(null);
   const [showHelp, setShowHelp] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const projectInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -83,579 +35,288 @@ const App: React.FC = () => {
   }, [logs]);
 
   useEffect(() => {
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
+    document.documentElement.classList.toggle('dark', theme === 'dark');
   }, [theme]);
 
-  // Tự động kiểm tra API Key khi paste (Debounce)
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      if (apiKey.trim().length > 10) {
-        handleCheckKey();
-      } else if (apiKey.trim() === '') {
-        setApiStatus('idle');
-        setIsKeyValid(false);
-      }
-    }, 800);
-    return () => clearTimeout(timeoutId);
-  }, [apiKey]);
-
   const addLog = (message: string, type: 'info' | 'success' | 'error' | 'warning' = 'info') => {
-      setLogs(prev => [...prev, {
-          timestamp: new Date().toLocaleTimeString(),
-          message,
-          type
-      }]);
-  };
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    isDraggingRef.current = true;
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-  };
-
-  const handleMouseMove = (e: MouseEvent) => {
-    if (!isDraggingRef.current) return;
-    const newHeight = Math.max(200, Math.min(window.innerHeight - 200, e.clientY - 56));
-    setPreviewHeight(newHeight);
-  };
-
-  const handleMouseUp = () => {
-    isDraggingRef.current = false;
-    document.removeEventListener('mousemove', handleMouseMove);
-    document.removeEventListener('mouseup', handleMouseUp);
+    setLogs(prev => [...prev, { timestamp: new Date().toLocaleTimeString(), message, type }]);
   };
 
   const handleCheckKey = async () => {
-    const cleanKey = apiKey.trim();
-    if (!cleanKey) return;
-    setIsCheckingKey(true);
+    if (!apiKey.trim()) return;
     setApiStatus('checking');
-    const isValid = await validateApiKey(cleanKey);
-    setIsCheckingKey(false);
+    const isValid = await validateApiKey(apiKey.trim());
     if (isValid) {
-      setIsKeyValid(true);
       setApiStatus('valid');
-      addLog("API Key hợp lệ.", "success");
+      addLog("API Key hợp lệ. Đã sẵn sàng.", "success");
     } else {
-      setIsKeyValid(false);
       setApiStatus('invalid');
-      addLog("API Key không hợp lệ.", "error");
+      addLog("API Key không hợp lệ hoặc lỗi billing.", "error");
     }
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const text = e.target?.result;
-        if (typeof text === 'string') {
-            setScriptInput(text);
-            addLog(`Đã tải file kịch bản: ${file.name}`, "success");
+  const renderTextToImage = (
+    text: string, 
+    widthMm: number, 
+    fontSize: number, 
+    color: string, 
+    isBold: boolean = false,
+    align: 'left' | 'center' = 'left'
+  ): Promise<{ dataUrl: string, heightMm: number }> => {
+    return new Promise((resolve) => {
+      const scale = 5; // Độ phân giải cực cao để in ấn không bị vỡ
+      const mmToPx = 3.7795; 
+      const canvasWidth = widthMm * mmToPx * scale;
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d')!;
+      
+      const fontName = '"Inter", "Segoe UI", "Arial", sans-serif';
+      ctx.font = `${isBold ? 'bold' : ''} ${fontSize * mmToPx * scale}px ${fontName}`;
+      
+      const words = text.split(/\s+/);
+      const lines: string[] = [];
+      let currentLine = '';
+      
+      words.forEach(word => {
+        const testLine = currentLine + word + ' ';
+        if (ctx.measureText(testLine).width > canvasWidth && currentLine !== '') {
+          lines.push(currentLine.trim());
+          currentLine = word + ' ';
+        } else {
+          currentLine = testLine;
         }
-    };
-    reader.readAsText(file);
-    event.target.value = '';
+      });
+      lines.push(currentLine.trim());
+      
+      const lineHeight = fontSize * 1.5;
+      const totalHeightMm = lines.length * lineHeight;
+      canvas.width = canvasWidth;
+      canvas.height = totalHeightMm * mmToPx * scale;
+      
+      ctx.scale(scale, scale);
+      ctx.font = `${isBold ? 'bold' : ''} ${fontSize * mmToPx}px ${fontName}`;
+      ctx.fillStyle = color;
+      ctx.textBaseline = 'top';
+      
+      lines.forEach((line, i) => {
+        let x = 0;
+        if (align === 'center') {
+          x = (widthMm * mmToPx - ctx.measureText(line).width) / 2;
+        }
+        ctx.fillText(line, x, i * lineHeight * mmToPx);
+      });
+      
+      resolve({ dataUrl: canvas.toDataURL('image/png'), heightMm: totalHeightMm });
+    });
   };
 
-  const handleSaveProject = () => {
-    if (!analysisData && timelineItems.length === 0) return;
-    const projectData: SavedProject = {
-        version: "1.0",
-        timestamp: new Date().toISOString(),
-        scriptInput,
-        analysisData,
-        timelineItems
-    };
-    const blob = new Blob([JSON.stringify(projectData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    const fileName = analysisData?.title 
-        ? `${analysisData.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_project.json`
-        : 'sketch_ai_project.json';
-    link.href = url;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    addLog(`Đã lưu dự án: ${fileName}`, "success");
-  };
-
-  const handleLoadProject = (event: React.ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (e) => {
-          try {
-              const text = e.target?.result;
-              if (typeof text === 'string') {
-                  const data = JSON.parse(text) as SavedProject;
-                  if (data.version && data.timelineItems) {
-                      setScriptInput(data.scriptInput || '');
-                      setAnalysisData(data.analysisData || null);
-                      setTimelineItems(data.timelineItems || []);
-                      setView(data.timelineItems.length > 0 ? 'timeline' : 'input');
-                      addLog(`Đã mở dự án thành công: ${file.name}`, "success");
-                  }
-              }
-          } catch (err) {
-              addLog("Lỗi khi đọc file dự án", "error");
-          }
-      };
-      reader.readAsText(file);
-      event.target.value = '';
-  };
-
-  /**
-   * World-class PDF Generation logic supporting full Unicode via Canvas rendering
-   */
   const handleExportPDF = async () => {
     if (!analysisData || timelineItems.length === 0) return;
-    addLog("Đang khởi tạo PDF chuyên nghiệp...", "info");
+    addLog("Đang khởi tạo PDF chất lượng cao...", "info");
     
     try {
-        const { jsPDF } = (window as any).jspdf;
-        const doc = new jsPDF('p', 'mm', 'a4');
-        const pageWidth = doc.internal.pageSize.getWidth();
-        const pageHeight = doc.internal.pageSize.getHeight();
-        
-        // --- 1. TRANG BÌA (COVER PAGE) ---
-        doc.setFillColor(18, 18, 18);
-        doc.rect(0, 0, pageWidth, pageHeight, 'F');
-        
-        doc.setFillColor(249, 115, 22); // Orange 500
-        doc.rect(0, 40, pageWidth, 2, 'F');
-        
-        doc.setTextColor(249, 115, 22);
-        doc.setFontSize(12);
-        doc.text("DOCUMENTATION FOR", pageWidth / 2, 35, { align: "center" });
+      const { jsPDF } = (window as any).jspdf;
+      const doc = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      
+      // --- TRANG BÌA (Tone Cam-Trắng) ---
+      doc.setFillColor(249, 115, 22); // Orange 500
+      doc.rect(0, 0, pageWidth, 50, 'F');
+      
+      const headImg = await renderTextToImage("OFFICIAL STORYBOARD", pageWidth - 40, 10, "#FFFFFF", true, 'center');
+      doc.addImage(headImg.dataUrl, 'PNG', 20, 20, pageWidth - 40, headImg.heightMm);
 
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(38);
-        doc.text("SKETCH AI STORYBOARD", pageWidth / 2, 70, { align: "center" });
-        
-        doc.setFontSize(22);
-        doc.setTextColor(200, 200, 200);
-        doc.text((analysisData.title || "UNTITLED PROJECT").toUpperCase(), pageWidth / 2, 85, { align: "center" });
-        
-        doc.setFontSize(10);
-        doc.setTextColor(150, 150, 150);
-        doc.text(`GENRE: ${analysisData.genre || "N/A"}`, pageWidth / 2, 95, { align: "center" });
+      const titleImg = await renderTextToImage(analysisData.title.toUpperCase(), pageWidth - 40, 24, "#18181b", true, 'center');
+      doc.addImage(titleImg.dataUrl, 'PNG', 20, 70, pageWidth - 40, titleImg.heightMm);
 
-        // Helper function to render Unicode Text to Canvas to avoid jspdf font issues
-        const drawTextToCanvas = (text: string, width: number, fontSize: number, color: string, isBold: boolean = false): Promise<string> => {
-            return new Promise((resolve) => {
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d')!;
-                const scale = 4; // High DPI
-                canvas.width = width * scale;
-                
-                ctx.font = `${isBold ? 'bold' : ''} ${fontSize * scale}px "Inter", "Arial", sans-serif`;
-                const lines: string[] = [];
-                const words = text.split(' ');
-                let currentLine = '';
-                
-                words.forEach(word => {
-                    const testLine = currentLine + word + ' ';
-                    const metrics = ctx.measureText(testLine);
-                    if (metrics.width > (width - 10) * scale && currentLine !== '') {
-                        lines.push(currentLine);
-                        currentLine = word + ' ';
-                    } else {
-                        currentLine = testLine;
-                    }
-                });
-                lines.push(currentLine);
-                
-                canvas.height = lines.length * (fontSize * 1.5) * scale;
-                ctx.scale(scale, scale);
-                ctx.fillStyle = color;
-                ctx.font = `${isBold ? 'bold' : ''} ${fontSize}px "Inter", "Arial", sans-serif`;
-                ctx.textBaseline = 'top';
-                
-                lines.forEach((line, i) => {
-                    ctx.fillText(line, 0, i * fontSize * 1.5);
-                });
-                
-                resolve(canvas.toDataURL('image/png'));
-            });
-        };
+      const loglineImg = await renderTextToImage(analysisData.logline_vi, pageWidth - 60, 11, "#52525b", false, 'center');
+      doc.addImage(loglineImg.dataUrl, 'PNG', 30, 120, pageWidth - 60, loglineImg.heightMm);
 
-        // --- 2. LOGLINE ON COVER ---
-        const loglineImg = await drawTextToCanvas(analysisData.logline_vi || "", pageWidth - 80, 14, "#FFFFFF", false);
-        const loglineAspect = (pageWidth - 80) / 14; // Approximate
-        doc.addImage(loglineImg, 'PNG', 40, 120, pageWidth - 80, 20); // Manual height for simplicity
+      // --- DANH SÁCH PHÂN CẢNH ---
+      const margin = 20;
+      const shotsPerPage = 3;
+      const boxWidth = pageWidth - (margin * 2);
+      const boxHeight = 70;
 
-        doc.setFontSize(10);
-        doc.setTextColor(100, 100, 100);
-        doc.text(`DATE GENERATED: ${new Date().toLocaleDateString()}`, pageWidth / 2, pageHeight - 20, { align: "center" });
-
-        // --- 3. SHOT PAGES ---
-        const margin = 15;
-        const shotsPerPage = 3;
-        const boxWidth = pageWidth - (margin * 2);
-        const boxHeight = 75;
-
-        for (let i = 0; i < timelineItems.length; i++) {
-            const item = timelineItems[i];
-            const pageIndex = Math.floor(i / shotsPerPage);
-            const shotIndexInPage = i % shotsPerPage;
-
-            if (shotIndexInPage === 0) {
-                doc.addPage();
-                doc.setFillColor(255, 255, 255);
-                doc.rect(0, 0, pageWidth, pageHeight, 'F');
-                
-                // Sidebar visual indicator
-                doc.setFillColor(249, 115, 22);
-                doc.rect(0, 0, 4, pageHeight, 'F');
-
-                // Header
-                doc.setFillColor(18, 18, 18);
-                doc.rect(0, 0, pageWidth, 15, 'F');
-                doc.setTextColor(255, 255, 255);
-                doc.setFontSize(9);
-                doc.text(`SKETCH AI STORYBOARD - ${analysisData.title.toUpperCase()}`, margin + 5, 10);
-                doc.text(`PAGE ${doc.internal.getNumberOfPages() - 1}`, pageWidth - margin, 10, { align: "right" });
-            }
-
-            const currentY = 25 + (shotIndexInPage * (boxHeight + 10));
-
-            // Draw Card Container
-            doc.setDrawColor(230, 230, 230);
-            doc.setLineWidth(0.2);
-            doc.rect(margin + 5, currentY, boxWidth - 5, boxHeight);
-            
-            // Thumbnail
-            const imgW = 90;
-            const imgH = 50.6;
-            doc.setFillColor(248, 248, 248);
-            doc.rect(margin + 10, currentY + 5, imgW, imgH, 'F');
-            
-            if (item.data.imageUrl) {
-                doc.addImage(item.data.imageUrl, 'PNG', margin + 10, currentY + 5, imgW, imgH);
-            } else {
-                doc.setTextColor(200, 200, 200);
-                doc.setFontSize(8);
-                doc.text("SKETCH NOT GENERATED", margin + 10 + (imgW/2), currentY + 5 + (imgH/2), { align: "center" });
-            }
-
-            // Text Area
-            const textX = margin + 10 + imgW + 10;
-            const textW = pageWidth - textX - margin - 5;
-
-            // Shot Title (Canvas for Unicode)
-            const titleImg = await drawTextToCanvas(`SHOT #${i + 1}`, textW, 14, "#ea580c", true);
-            doc.addImage(titleImg, 'PNG', textX, currentY + 5, textW, 6);
-
-            // Details (Canvas for Unicode)
-            const detailsText = `${item.data.type} • ${item.duration}s • ${item.data.camera_movement || 'Static'}`;
-            const detailsImg = await drawTextToCanvas(detailsText, textW, 9, "#444444", true);
-            doc.addImage(detailsImg, 'PNG', textX, currentY + 14, textW, 4);
-
-            // Description (Canvas for Unicode)
-            const descImg = await drawTextToCanvas(item.data.description_vi || "No description", textW, 9, "#666666", false);
-            doc.addImage(descImg, 'PNG', textX, currentY + 22, textW, 25);
-
-            // Footer of the box
-            const sceneImg = await drawTextToCanvas(item.sceneHeader.toUpperCase(), textW, 7, "#999999", false);
-            doc.addImage(sceneImg, 'PNG', textX, currentY + boxHeight - 8, textW, 3);
+      for (let i = 0; i < timelineItems.length; i++) {
+        const item = timelineItems[i];
+        if (i % shotsPerPage === 0) {
+          doc.addPage();
+          doc.setFillColor(249, 115, 22);
+          doc.rect(0, 0, pageWidth, 12, 'F');
+          const headerImg = await renderTextToImage(`DỰ ÁN: ${analysisData.title.toUpperCase()} | TRANG ${doc.internal.getNumberOfPages() - 1}`, pageWidth - 40, 6, "#FFFFFF", true);
+          doc.addImage(headerImg.dataUrl, 'PNG', margin, 3, pageWidth - 40, headerImg.heightMm);
         }
 
-        doc.save(`SKETCH_AI_STORYBOARD_${analysisData.title.replace(/\s+/g, '_')}.pdf`);
-        addLog("Xuất PDF thành công (Hỗ trợ Unicode toàn diện).", "success");
-    } catch (error: any) {
-        addLog(`Lỗi xuất PDF: ${error.message}`, "error");
-        console.error(error);
+        const y = 20 + (i % shotsPerPage) * (boxHeight + 10);
+        
+        // Card Border
+        doc.setDrawColor(249, 115, 22);
+        doc.setLineWidth(0.5);
+        doc.rect(margin, y, boxWidth, boxHeight);
+        
+        // Thumbnail
+        const imgW = 80;
+        const imgH = 45;
+        doc.setFillColor(245, 245, 245);
+        doc.rect(margin + 5, y + 5, imgW, imgH, 'F');
+        if (item.data.imageUrl) {
+          doc.addImage(item.data.imageUrl, 'PNG', margin + 5, y + 5, imgW, imgH);
+        }
+
+        // Info
+        const infoX = margin + imgW + 10;
+        const infoW = boxWidth - imgW - 15;
+        
+        const shotTitleImg = await renderTextToImage(`SHOT #${i + 1}`, infoW, 14, "#ea580c", true);
+        doc.addImage(shotTitleImg.dataUrl, 'PNG', infoX, y + 5, infoW, shotTitleImg.heightMm);
+
+        const metaImg = await renderTextToImage(`${item.data.type} • ${item.duration}s • ${item.data.camera_movement}`, infoW, 9, "#18181b", true);
+        doc.addImage(metaImg.dataUrl, 'PNG', infoX, y + 15, infoW, metaImg.heightMm);
+
+        const descImg = await renderTextToImage(item.data.description_vi, infoW, 9, "#52525b", false);
+        doc.addImage(descImg.dataUrl, 'PNG', infoX, y + 25, infoW, descImg.heightMm);
+      }
+
+      doc.save(`STORYBOARD_${analysisData.title.replace(/\s/g, '_')}.pdf`);
+      addLog("Đã xuất PDF thành công (Sửa lỗi hiển thị).", "success");
+    } catch (e: any) {
+      addLog(`Lỗi PDF: ${e.message}`, "error");
     }
   };
 
   const handleAnalyze = async () => {
-    if (!isKeyValid) {
-        addLog("Vui lòng nhập API Key hợp lệ.", "warning");
-        return;
-    }
-    if (!scriptInput.trim()) return;
+    if (apiStatus !== 'valid' || !scriptInput.trim()) return;
     setIsAnalyzing(true);
-    addLog("AI đang phác thảo cấu trúc kịch bản...", "info");
+    addLog("AI đang bóc tách kịch bản...", "info");
     try {
       const data = await analyzeScript(scriptInput, apiKey.trim());
       setAnalysisData(data);
       const items: TimelineItem[] = [];
-      let currentTime = 0;
-      data.acts.forEach(act => {
-        act.scenes.forEach(scene => {
-            scene.shots.forEach(shot => {
-                items.push({
-                    id: shot.id,
-                    start: currentTime,
-                    duration: shot.duration,
-                    data: shot,
-                    sceneHeader: scene.header
-                });
-                currentTime += shot.duration;
-            });
-        });
-      });
+      let time = 0;
+      data.acts.forEach(act => act.scenes.forEach(scene => scene.shots.forEach(shot => {
+        items.push({ id: shot.id, start: time, duration: shot.duration, data: shot, sceneHeader: scene.header });
+        time += shot.duration;
+      })));
       setTimelineItems(items);
       setView('timeline');
-      addLog(`Phân tích xong: ${items.length} shot quay.`, "success");
+      addLog("Phân tích xong.", "success");
     } catch (err) {
-      addLog("Phân tích thất bại.", "error");
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
-
-  const handleUpdateShotData = (updates: Partial<Shot>) => {
-    if (!selectedItemId) return;
-    setTimelineItems(prev => {
-        const idx = prev.findIndex(i => i.id === selectedItemId);
-        if (idx === -1) return prev;
-        const newItems = [...prev];
-        newItems[idx] = { ...newItems[idx], data: { ...newItems[idx].data, ...updates } };
-        return newItems;
-    });
-  };
-
-  const handleGenerateImage = async (aspectRatio: string = "16:9", resolution: string = "1K") => {
-      if (!isKeyValid || !selectedItemId) return;
-      const idx = timelineItems.findIndex(i => i.id === selectedItemId);
-      if (idx === -1) return;
-      addLog(`Đang vẽ phác thảo Shot ${idx + 1}...`, "info");
-      try {
-          const imageUrl = await generateShotImage(timelineItems[idx].data.prompt_en, apiKey.trim(), analysisData?.characters, aspectRatio, resolution);
-          if (imageUrl) {
-              const newItems = [...timelineItems];
-              newItems[idx] = { ...newItems[idx], data: { ...newItems[idx].data, imageUrl } };
-              setTimelineItems(newItems);
-              addLog(`Đã vẽ xong Shot ${idx + 1}`, "success");
-          }
-      } catch (error: any) {
-          addLog(`Lỗi vẽ ảnh: ${error.message}`, "error");
-      }
-  };
-
-  const handleBatchGenerateImages = async () => {
-    if (!isKeyValid) return;
-    const itemsToProcess = timelineItems.filter(item => !item.data.imageUrl);
-    if (itemsToProcess.length === 0) return;
-    setIsBatchGenerating(true);
-    shouldStopBatchRef.current = false;
-    setBatchProgress({ current: 0, total: itemsToProcess.length });
-    for (let i = 0; i < itemsToProcess.length; i++) {
-        if (shouldStopBatchRef.current) break;
-        const item = itemsToProcess[i];
-        try {
-            const imageUrl = await generateShotImage(item.data.prompt_en, apiKey.trim(), analysisData?.characters, "16:9", "1K");
-            if (imageUrl) {
-                setTimelineItems(prev => {
-                    const newItems = [...prev];
-                    const idx = newItems.findIndex(t => t.id === item.id);
-                    if (idx !== -1) newItems[idx] = { ...newItems[idx], data: { ...newItems[idx].data, imageUrl } };
-                    return newItems;
-                });
-            }
-        } catch (e) {}
-        setBatchProgress(prev => ({ ...prev, current: i + 1 }));
-        if (i < itemsToProcess.length - 1) await new Promise(r => setTimeout(r, 4000));
-    }
-    setIsBatchGenerating(false);
-    addLog("Hoàn tất vẽ phác thảo hàng loạt.", "success");
+      addLog("Lỗi phân tích kịch bản.", "error");
+    } finally { setIsAnalyzing(false); }
   };
 
   const selectedItem = timelineItems.find(i => i.id === selectedItemId) || null;
 
   return (
-    <div className="h-screen w-screen bg-white dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 flex flex-col overflow-hidden transition-colors duration-300">
-      <HelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} theme={theme} />
-      <input type="file" accept=".json" ref={projectInputRef} className="hidden" onChange={handleLoadProject} />
-
-      <header className="h-16 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 flex items-center relative px-4 shrink-0 z-50 shadow-sm dark:shadow-lg justify-between transition-colors">
-        <div className="flex items-center space-x-3 w-1/4">
-            <div className="bg-orange-600 p-1.5 rounded-lg shadow-lg shadow-orange-600/20">
-                <Images size={20} className="text-white" />
-            </div>
-            <h1 className="text-lg font-black tracking-tighter whitespace-nowrap hidden md:block uppercase">SKETCH <span className="text-orange-500 font-light">AI STORYBOARD</span></h1>
+    <div className="h-screen w-screen bg-white dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 flex flex-col overflow-hidden transition-colors">
+      <header className="h-16 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 flex items-center px-4 justify-between z-50">
+        <div className="flex items-center space-x-3">
+          <div className="bg-orange-600 p-1.5 rounded-lg">
+            <Images size={20} className="text-white" />
+          </div>
+          <h1 className="text-lg font-black tracking-tighter uppercase">SKETCH <span className="text-orange-500 font-light">AI</span></h1>
         </div>
-        
-        <div className="flex-1 flex justify-center px-4">
-             {analysisData?.title && (
-                 <h2 className="text-sm md:text-lg font-bold tracking-tight text-zinc-500 dark:text-zinc-400 uppercase text-center truncate bg-zinc-100 dark:bg-black/40 px-3 py-1 rounded-full border border-zinc-200 dark:border-zinc-800">
-                     {analysisData.title}
-                 </h2>
-             )}
-        </div>
-        
-        <div className="flex items-center justify-end space-x-2 w-auto md:w-2/5">
-             <button 
-                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                className="p-2 mr-2 text-zinc-500 hover:text-orange-500 bg-zinc-100 dark:bg-zinc-800 rounded-lg transition-colors border border-zinc-200 dark:border-zinc-700"
-                title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
-             >
-                {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-             </button>
 
-             <div className="flex items-center bg-zinc-50 dark:bg-black border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-1.5 transition-all focus-within:border-orange-500/50">
-                <div className="flex items-center mr-3">
-                    {apiStatus === 'idle' && <ShieldAlert size={14} className="text-zinc-400 dark:text-zinc-600" />}
-                    {apiStatus === 'checking' && <Loader2 size={14} className="animate-spin text-orange-500" />}
-                    {apiStatus === 'valid' && <CheckCircle size={14} className="text-emerald-500" />}
-                    {apiStatus === 'invalid' && <AlertCircle size={14} className="text-red-500" />}
-                    <span className={`ml-2 text-[10px] font-bold uppercase hidden lg:block ${
-                        apiStatus === 'valid' ? 'text-emerald-500' : 
-                        apiStatus === 'invalid' ? 'text-red-500' : 
-                        apiStatus === 'checking' ? 'text-orange-500' : 'text-zinc-400 dark:text-zinc-500'
-                    }`}>
-                        {apiStatus === 'valid' ? 'Hợp lệ' : apiStatus === 'invalid' ? 'Lỗi Key' : apiStatus === 'checking' ? 'Đang check' : 'Chưa nhập'}
-                    </span>
-                </div>
-                <input 
-                    type="password" 
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                    placeholder="Gemini API Key..."
-                    className="bg-transparent border-none text-xs text-zinc-900 dark:text-zinc-200 focus:ring-0 outline-none w-24 md:w-40 placeholder-zinc-400 dark:placeholder-zinc-700 font-mono"
-                />
-             </div>
-
-             {view === 'timeline' ? (
-                 <>
-                    {isBatchGenerating ? (
-                        <button onClick={() => shouldStopBatchRef.current = true} className="flex items-center gap-2 bg-red-900/10 dark:bg-red-900/30 hover:bg-red-900/20 dark:hover:bg-red-900/50 text-red-600 dark:text-red-200 px-3 py-1.5 rounded-lg text-xs font-medium border border-red-200 dark:border-red-800 transition-colors">
-                            <StopCircle size={14}/> <span>{batchProgress.current}/{batchProgress.total}</span>
-                        </button>
-                    ) : (
-                        <button onClick={handleBatchGenerateImages} className="flex items-center gap-2 bg-orange-600 hover:bg-orange-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-lg shadow-orange-600/20 transition-all">
-                            <Wand2 size={14}/> <span className="hidden md:inline">Sketch All</span>
-                        </button>
-                    )}
-                    <button onClick={handleExportPDF} className="p-2 text-zinc-500 dark:text-zinc-400 hover:text-orange-500 dark:hover:text-white bg-zinc-100 dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700" title="Xuất PDF"><FileOutput size={16}/></button>
-                    <button onClick={handleSaveProject} className="p-2 text-zinc-500 dark:text-zinc-400 hover:text-orange-500 dark:hover:text-white bg-zinc-100 dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700" title="Lưu dự án"><Save size={16}/></button>
-                    <button onClick={() => setView('input')} className="p-2 text-orange-500 hover:bg-orange-500/10 bg-zinc-100 dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700"><PlusCircle size={16}/></button>
-                 </>
-            ) : (
-                <button onClick={() => projectInputRef.current?.click()} className="flex items-center gap-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 px-3 py-1.5 rounded-lg text-xs font-medium border border-zinc-200 dark:border-zinc-700">
-                    <FolderOpen size={14} /> Open
-                </button>
+        <div className="flex items-center space-x-3">
+          <div className={`flex items-center border rounded-lg px-2 py-1.5 transition-all ${
+            apiStatus === 'valid' ? 'border-emerald-500 bg-emerald-500/5' : 
+            apiStatus === 'invalid' ? 'border-red-500 bg-red-500/5' : 'border-zinc-200 dark:border-zinc-800'
+          }`}>
+            {apiStatus === 'checking' ? <Loader2 size={14} className="animate-spin text-orange-500" /> : 
+             apiStatus === 'valid' ? <CheckCircle size={14} className="text-emerald-500" /> : 
+             apiStatus === 'invalid' ? <AlertCircle size={14} className="text-red-500" /> : <ShieldAlert size={14} className="text-zinc-400" />}
+            <input 
+              type="password" 
+              value={apiKey} 
+              onChange={e => {setApiKey(e.target.value); setApiStatus('idle');}}
+              placeholder="Dán Gemini API Key..." 
+              className="bg-transparent text-xs ml-2 outline-none w-32 md:w-48 placeholder:text-zinc-400"
+            />
+            {apiStatus === 'idle' && apiKey.length > 5 && (
+              <button onClick={handleCheckKey} className="ml-2 text-[10px] font-bold text-orange-600 uppercase">Kết nối</button>
             )}
-             <button onClick={() => setShowHelp(true)} className="text-zinc-400 hover:text-orange-500 dark:text-zinc-500 dark:hover:text-white p-1.5"><HelpCircle size={20} /></button>
+          </div>
+
+          <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className="p-2 bg-zinc-100 dark:bg-zinc-800 rounded-lg text-zinc-500">
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+          
+          {view === 'timeline' && (
+            <button onClick={handleExportPDF} className="bg-orange-600 text-white p-2 rounded-lg" title="Xuất PDF">
+              <FileOutput size={16} />
+            </button>
+          )}
         </div>
       </header>
 
-      <main className="flex-1 flex overflow-hidden">
-        {view === 'input' && (
-          <div className="flex-1 flex flex-col items-center justify-center p-6 bg-zinc-50 dark:bg-[#09090b] overflow-y-auto transition-colors">
-            <div className="w-full max-w-4xl flex flex-col h-[80vh]">
-                <div className="text-center mb-10">
-                    <div className="inline-block bg-orange-600/10 border border-orange-500/20 px-3 py-1 rounded-full text-orange-500 text-xs font-bold tracking-widest uppercase mb-4">
-                        Professional Storyboard Creator
-                    </div>
-                    <h2 className="text-5xl font-black text-zinc-900 dark:text-white mb-3 tracking-tighter leading-tight">VẼ PHÁC THẢO <br/> KỊCH BẢN VỚI AI</h2>
-                    <p className="text-zinc-500 dark:text-zinc-400 max-w-lg mx-auto">Tự động hóa quy trình tiền kỳ: Chia shot, tạo timeline và vẽ storyboard dạng sketch chuyên nghiệp.</p>
-                </div>
-
-                <div className="flex-1 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 flex flex-col overflow-hidden shadow-xl dark:shadow-2xl relative transition-colors">
-                    <div className="bg-zinc-50 dark:bg-zinc-800/50 px-4 py-2.5 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">
-                        <span>Nhập kịch bản phân cảnh</span>
-                        <button onClick={() => fileInputRef.current?.click()} className="hover:text-orange-500 flex items-center transition-colors"><Upload size={12} className="mr-1"/> TẢI FILE (.TXT)</button>
-                        <input type="file" accept=".txt" ref={fileInputRef} className="hidden" onChange={handleFileUpload}/>
-                    </div>
-                    <textarea
-                        className="flex-1 bg-transparent p-8 font-mono text-sm text-zinc-800 dark:text-zinc-300 resize-none focus:outline-none leading-relaxed custom-scrollbar"
-                        placeholder="Dán nội dung kịch bản của bạn vào đây (Cảnh 1, INT. PHÒNG KHÁCH...)"
-                        value={scriptInput}
-                        onChange={(e) => setScriptInput(e.target.value)}
-                        spellCheck={false}
-                    />
-                    {!isKeyValid && (
-                        <div className="absolute inset-0 bg-white/60 dark:bg-black/60 backdrop-blur-[4px] flex flex-col items-center justify-center z-10 p-6 text-center transition-colors">
-                            <div className="w-16 h-16 bg-zinc-50 dark:bg-zinc-800 rounded-2xl flex items-center justify-center mb-6 border border-zinc-200 dark:border-zinc-700">
-                                <Key size={32} className="text-zinc-300 dark:text-zinc-500"/>
-                            </div>
-                            <h3 className="text-xl font-bold text-zinc-900 dark:text-white mb-2">Yêu cầu Gemini API Key</h3>
-                            <p className="text-zinc-500 dark:text-zinc-400 mb-8 max-w-xs text-sm">Nhập mã API Key vào góc trên bên phải để bắt đầu sử dụng trí tuệ nhân tạo.</p>
-                        </div>
-                    )}
-                </div>
-
-                <div className="mt-10 flex justify-center">
-                    <button
-                        onClick={handleAnalyze}
-                        disabled={isAnalyzing || !scriptInput.trim() || !isKeyValid}
-                        className={`
-                            flex items-center px-12 py-4 rounded-full text-lg font-black tracking-tight shadow-xl transition-all
-                            ${isAnalyzing || !isKeyValid
-                                ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-600 cursor-not-allowed border border-zinc-300 dark:border-zinc-700' 
-                                : 'bg-orange-600 text-white hover:bg-orange-500 hover:scale-105 hover:shadow-orange-600/40'
-                            }
-                        `}
-                    >
-                        {isAnalyzing ? <><Loader2 className="animate-spin mr-3"/> ĐANG PHÂN TÍCH...</> : <><Wand2 className="mr-3"/> TẠO STORYBOARD NGAY</>}
-                    </button>
-                </div>
+      <main className="flex-1 overflow-hidden">
+        {view === 'input' ? (
+          <div className="h-full flex flex-col items-center justify-center p-8">
+            <div className="w-full max-w-3xl space-y-8">
+              <div className="text-center space-y-4">
+                <h2 className="text-5xl font-black tracking-tight leading-tight">VẼ PHÁC THẢO <br/> <span className="text-orange-600">STORYBOARD AI</span></h2>
+                <p className="text-zinc-500">Nhập kịch bản để AI tự động chia shot và vẽ phác thảo.</p>
+              </div>
+              <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-xl overflow-hidden h-[40vh] relative">
+                <textarea 
+                  className="w-full h-full p-6 bg-transparent resize-none outline-none font-mono text-sm leading-relaxed"
+                  value={scriptInput}
+                  onChange={e => setScriptInput(e.target.value)}
+                  placeholder="Cảnh 1. INT. PHÒNG KHÁCH - NGÀY..."
+                />
+              </div>
+              <div className="flex justify-center">
+                <button 
+                  onClick={handleAnalyze}
+                  disabled={isAnalyzing || apiStatus !== 'valid'}
+                  className="bg-orange-600 text-white px-12 py-4 rounded-full font-black text-lg shadow-xl shadow-orange-600/30 hover:scale-105 transition-all disabled:opacity-50 flex items-center"
+                >
+                  {isAnalyzing ? <Loader2 className="animate-spin mr-3" /> : <Wand2 className="mr-3"/>}
+                  {isAnalyzing ? "ĐANG PHÂN TÍCH..." : "TẠO STORYBOARD"}
+                </button>
+              </div>
             </div>
           </div>
-        )}
-
-        {view === 'timeline' && (
-            <div className="flex-1 flex flex-row overflow-hidden w-full transition-colors">
-                <div className="flex-1 flex flex-col min-w-0 bg-zinc-50 dark:bg-black transition-colors">
-                     <div style={{ height: previewHeight }} className="flex-shrink-0 bg-white dark:bg-zinc-950 relative flex items-center justify-center overflow-hidden border-b border-zinc-200 dark:border-zinc-800 transition-colors">
-                        {selectedItem ? (
-                             <div className="w-full h-full p-4 flex items-center justify-center">
-                                <div className="max-w-full max-h-full aspect-video bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xl dark:shadow-2xl relative flex items-center justify-center overflow-hidden group">
-                                    {selectedItem.data.imageUrl ? (
-                                        <img src={selectedItem.data.imageUrl} className="w-full h-full object-contain grayscale dark:brightness-90" alt="preview" />
-                                    ) : (
-                                        <div className="text-center p-8">
-                                            <h3 className="text-lg font-bold text-zinc-700 dark:text-zinc-300 mb-1">{selectedItem.sceneHeader}</h3>
-                                            <p className="text-orange-500 text-xs font-bold uppercase mb-4">{selectedItem.data.type}</p>
-                                            <p className="text-zinc-500 italic text-sm max-w-sm">"{selectedItem.data.description_vi}"</p>
-                                        </div>
-                                    )}
-                                </div>
-                             </div>
-                        ) : (
-                            <div className="text-zinc-300 dark:text-zinc-800 flex flex-col items-center select-none">
-                                <Images size={64} className="mb-4 opacity-10" />
-                                <p className="text-xs font-bold uppercase tracking-widest opacity-30">Chọn một Shot để xem</p>
-                            </div>
-                        )}
-                     </div>
-
-                     <div className="h-1 bg-zinc-200 dark:bg-zinc-800 cursor-row-resize hover:bg-orange-600 transition-colors z-20 flex items-center justify-center" onMouseDown={handleMouseDown}>
-                         <div className="w-8 h-0.5 bg-zinc-300 dark:bg-zinc-700 rounded-full"></div>
-                     </div>
-
-                     <div className="flex-1 min-h-0 relative">
-                        <Timeline items={timelineItems} onSelectItem={(i) => setSelectedItemId(i.id)} selectedItemId={selectedItemId} theme={theme} />
-                     </div>
-
-                     <div className="h-32 bg-white dark:bg-zinc-950 border-t border-zinc-200 dark:border-zinc-900 flex flex-col shrink-0 transition-colors">
-                         <div className="px-3 py-1.5 bg-zinc-50 dark:bg-zinc-900 flex items-center text-[9px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest border-b border-zinc-200 dark:border-black">
-                             <TerminalSquare size={12} className="mr-2 text-orange-500"/> Sketch System Logs
-                         </div>
-                         <div className="flex-1 overflow-y-auto p-3 font-mono text-[10px] space-y-1 custom-scrollbar">
-                             {logs.map((log, i) => (
-                                 <div key={i} className={log.type === 'error' ? 'text-red-500 dark:text-red-400' : log.type === 'success' ? 'text-emerald-600 dark:text-emerald-400' : log.type === 'warning' ? 'text-orange-600 dark:text-orange-400' : 'text-zinc-500 dark:text-zinc-500'}>
-                                     <span className="opacity-40 mr-2">{log.timestamp}</span> {log.message}
-                                 </div>
-                             ))}
-                             <div ref={logsEndRef} />
-                         </div>
-                     </div>
-                </div>
-
-                <div className="w-96 bg-white dark:bg-zinc-900 border-l border-zinc-200 dark:border-black flex flex-col flex-shrink-0 z-30 shadow-xl transition-colors">
-                    <ShotDetails item={selectedItem} onClose={() => setSelectedItemId(undefined)} onGenerateImage={handleGenerateImage} onUpdateShot={handleUpdateShotData} />
-                </div>
+        ) : (
+          <div className="h-full flex flex-row">
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <div style={{ height: previewHeight }} className="flex-shrink-0 bg-white dark:bg-black border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-center relative">
+                {selectedItem ? (
+                  <div className="max-w-[85%] max-h-[85%] aspect-video bg-zinc-100 dark:bg-zinc-900 rounded-lg overflow-hidden shadow-2xl relative">
+                    {selectedItem.data.imageUrl ? <img src={selectedItem.data.imageUrl} className="w-full h-full object-contain grayscale" /> : (
+                      <div className="p-8 text-center text-zinc-500">
+                        <Clapperboard size={32} className="mx-auto mb-4 opacity-20" />
+                        <p className="font-bold text-orange-600 uppercase text-xs">{selectedItem.data.type}</p>
+                        <p className="italic text-sm mt-2">"{selectedItem.data.description_vi}"</p>
+                      </div>
+                    )}
+                  </div>
+                ) : <p className="text-zinc-400 text-xs font-bold uppercase">Chọn Shot để xem trước</p>}
+              </div>
+              <div className="flex-1 relative">
+                <Timeline items={timelineItems} onSelectItem={item => setSelectedItemId(item.id)} selectedItemId={selectedItemId} theme={theme} />
+              </div>
+              <div className="h-24 bg-zinc-50 dark:bg-zinc-950 border-t dark:border-zinc-900 p-2 overflow-y-auto font-mono text-[10px] text-zinc-500">
+                {logs.map((log, i) => <div key={i}>[{log.timestamp}] {log.message}</div>)}
+                <div ref={logsEndRef} />
+              </div>
             </div>
+            <div className="w-96 bg-zinc-50 dark:bg-zinc-900 border-l dark:border-black shrink-0">
+              <ShotDetails item={selectedItem} onClose={() => setSelectedItemId(undefined)} onGenerateImage={(asp, res) => {
+                if(selectedItemId && apiStatus === 'valid') {
+                  addLog("Đang vẽ...", "info");
+                  generateShotImage(selectedItem!.data.prompt_en, apiKey.trim(), [], asp).then(url => {
+                    if(url) {
+                      setTimelineItems(prev => prev.map(t => t.id === selectedItemId ? {...t, data: {...t.data, imageUrl: url}} : t));
+                      addLog("Đã vẽ xong.", "success");
+                    }
+                  });
+                }
+              }} />
+            </div>
+          </div>
         )}
       </main>
     </div>
